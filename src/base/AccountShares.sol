@@ -3,15 +3,15 @@
 
 pragma solidity ^0.8.20;
 
-import {BSStorage} from "./BSStorage.sol";
+import {StorageLayout} from "./StorageLayout.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {BatchArrayChecker} from "contracts/utils/BatchArrayChecker.sol";
+import {BatchArrayChecker} from "../utils/BatchArrayChecker.sol";
 
 /**
  * @title Account management for each balance share.
  * @author Ben Jett - @BCJdevelopment
  */
-contract BSAccountsManagement is BSStorage {
+contract AccountShares is StorageLayout {
 
     event BalanceShareTotalBPSUpdate(
         address indexed client,

@@ -3,18 +3,18 @@
 
 pragma solidity ^0.8.20;
 
-import {BSStorage} from "./BSStorage.sol";
-import {BasisPoints} from "contracts/libraries/BasisPoints.sol";
-import {IBalanceSharesManager} from "contracts/executor/interfaces/IBalanceSharesManager.sol";
+import {StorageLayout} from "./StorageLayout.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeTransferLib} from "../utils/SafeTransferLib.sol";
+import {IBalanceSharesManager} from "../interfaces/IBalanceSharesManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20Utils} from "contracts/libraries/ERC20Utils.sol";
 
 /**
  * @title Balance share processing functions for BalanceSharesSingleton
  * @author Ben Jett - @BCJdevelopment
  */
-contract BSBalanceAllocations is BSStorage, IBalanceSharesManager {
-    using ERC20Utils for IERC20;
+contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
+    using SafeTransferLib for IERC20;
 
     error BalanceShareInactive(address client, uint256 balanceShareId);
     error InvalidAllocationAmount(uint256 amountToAllocate);
@@ -154,12 +154,14 @@ contract BSBalanceAllocations is BSStorage, IBalanceSharesManager {
             if (useRemainder) {
                 uint256 currentAssetRemainder = _getBalanceSum(_currentBalanceSumCheckpoint, asset).remainder;
                 balanceIncreasedBy += currentAssetRemainder;
-                newAssetRemainder = BasisPoints.bpsMulmod(balanceIncreasedBy, totalBps);
+                // Asset remainder is the mulmod
+                newAssetRemainder = mulmod(balanceIncreasedBy, totalBps, MAX_BPS);
             } else {
                 newAssetRemainder = MAX_BPS;
             }
 
-            amountToAllocate = BasisPoints.bps(balanceIncreasedBy, totalBps);
+            // Use muldiv to protect against potential overflow
+            amountToAllocate = Math.mulDiv(balanceIncreasedBy, totalBps, MAX_BPS);
         }
     }
 
@@ -275,7 +277,18 @@ contract BSBalanceAllocations is BSStorage, IBalanceSharesManager {
         BalanceSumCheckpoint storage _balanceSumCheckpoint = _currentBalanceSumCheckpoint;
 
         // Transfer the asset to this contract
-        asset.receiveFrom(msg.sender, amountToAllocate);
+        if (address(asset) == address(0)) {
+            if (msg.value != amountToAllocate) {
+                revert InvalidMsgValue(amountToAllocate, msg.value);
+            }
+        } else {
+            if (msg.value > 0) {
+                revert InvalidMsgValue(0, msg.value);
+            }
+            if (amountToAllocate > 0) {
+                asset.safeTransferFrom(msg.sender, address(this), amountToAllocate);
+            }
+        }
 
         unchecked {
             BalanceSum storage _currentBalanceSum = _getBalanceSum(_balanceSumCheckpoint, asset);

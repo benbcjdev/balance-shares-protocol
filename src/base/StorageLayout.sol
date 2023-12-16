@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.20;
 
-import {BasisPoints} from "contracts/libraries/BasisPoints.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
@@ -11,7 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
  * @title Storage layout for BalanceSharesSingleton
  * @author Ben Jett - @BCJdevelopment
  */
-contract BSStorage is ERC165 {
+contract StorageLayout is ERC165 {
 
 mapping(address client => mapping(uint256 balanceShareId => BalanceShare)) internal _balanceShares;
 
@@ -80,7 +79,7 @@ mapping(address client => mapping(uint256 balanceShareId => BalanceShare)) inter
     }
 
     // HELPER CONSTANTS
-    uint256 constant public MAX_BPS = BasisPoints.MAX_BPS;
+    uint256 constant public MAX_BPS = 10_000;
     uint256 constant internal MAX_INDEX = type(uint48).max;
     uint256 constant internal MAX_BALANCE_SUM_BALANCE = type(uint208).max;
 

@@ -3,10 +3,10 @@
 
 pragma solidity ^0.8.20;
 
-import {BSStorage} from "./BSStorage.sol";
-import {BSBalanceAllocations} from "./BSBalanceAllocations.sol";
-import {BSAccountsManagement} from "./BSAccountsManagement.sol";
-import {BSWithdrawals} from "./BSWithdrawals.sol";
+import {StorageLayout} from "./base/StorageLayout.sol";
+import {BalanceShareAllocations} from "./base/BalanceShareAllocations.sol";
+import {AccountShares} from "./base/AccountShares.sol";
+import {Withdrawals} from "./base/Withdrawals.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
@@ -41,17 +41,17 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
  * values, but changing the ordering of any of the mappings in storage will result in errors with these functions.
  */
 contract BalanceSharesSingleton is
-    BSStorage,
-    BSBalanceAllocations,
-    BSAccountsManagement,
-    BSWithdrawals
+    StorageLayout,
+    BalanceShareAllocations,
+    AccountShares,
+    Withdrawals
 {
 
     constructor() EIP712("BalanceSharesSingleton", "1") { }
 
     function supportsInterface(
         bytes4 interfaceId
-    ) public view virtual override(ERC165, BSBalanceAllocations) returns (bool) {
+    ) public view virtual override(ERC165, BalanceShareAllocations) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 

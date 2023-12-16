@@ -3,17 +3,19 @@
 
 pragma solidity ^0.8.20;
 
-import {BSAccountsManagement} from "./BSAccountsManagement.sol";
+import {AccountShares} from "./AccountShares.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {ERC20Utils} from "contracts/libraries/ERC20Utils.sol";
+import {SafeTransferLib} from "../utils/SafeTransferLib.sol";
+// import {ERC20Utils} from "contracts/libraries/ERC20Utils.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract BSWithdrawals is BSAccountsManagement, EIP712, Nonces {
-    using ERC20Utils for IERC20;
+abstract contract Withdrawals is AccountShares, EIP712, Nonces {
+    using SafeTransferLib for IERC20;
+    using SafeTransferLib for address;
 
     struct WithdrawalCheckpointCache {
         bytes32 packedValue;
@@ -371,6 +373,8 @@ abstract contract BSWithdrawals is BSAccountsManagement, EIP712, Nonces {
         // Transfer the assets, and write the WithdrawalCheckpointCache updates to storage
         uint256 length = assets.length;
         for (uint256 i = 0; i < length;) {
+            IERC20 asset = assets[i];
+
             // Write the withdrawal storage update for the asset
             assembly ("memory-safe") {
                 let cache := mload(add(mul(i, 0x20), add(withdrawalCheckpointCaches, 0x20)))
@@ -378,18 +382,23 @@ abstract contract BSWithdrawals is BSAccountsManagement, EIP712, Nonces {
             }
 
             // Only need to transfer for amount > 0
-            if (withdrawableAmounts[i] > 0) {
+            uint256 amount = withdrawableAmounts[i];
+            if (amount > 0) {
 
                 // Transfer the asset
-                assets[i].transferTo(receiver, withdrawableAmounts[i]);
+                if (address(asset) == address(0)) {
+                    receiver.forceSafeTransferETH(amount);
+                } else {
+                    asset.safeTransfer(receiver, amount);
+                }
 
                 // Emit withdrawal event
                 emit AccountSharePeriodAssetWithdrawal(
                     client,
                     balanceShareId,
                     account,
-                    assets[i],
-                    withdrawableAmounts[i],
+                    asset,
+                    amount,
                     receiver,
                     periodIndex
                 );
