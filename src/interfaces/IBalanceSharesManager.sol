@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {ERC20Asset} from "../types/ERC20Asset.sol";
 
 interface IBalanceSharesManager {
 
@@ -13,25 +13,25 @@ interface IBalanceSharesManager {
 
     function getBalanceShareAllocation(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) external view returns (uint256 amountToAllocate);
 
     function getBalanceShareAllocationWithRemainder(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) external view returns (uint256 amountToAllocate, bool remainderIncrease);
 
     function allocateToBalanceShare(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 amountToAllocate
     ) external payable;
 
     function allocateToBalanceShareWithRemainder(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) external payable;
 

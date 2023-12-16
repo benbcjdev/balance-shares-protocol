@@ -5,16 +5,15 @@ pragma solidity ^0.8.20;
 
 import {StorageLayout} from "./StorageLayout.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeTransferLib} from "../utils/SafeTransferLib.sol";
 import {IBalanceSharesManager} from "../interfaces/IBalanceSharesManager.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20Asset, ERC20AssetLibrary} from "../types/ERC20Asset.sol";
 
 /**
  * @title Balance share processing functions for BalanceSharesSingleton
  * @author Ben Jett - @BCJdevelopment
  */
 contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
-    using SafeTransferLib for IERC20;
+    using ERC20AssetLibrary for ERC20Asset;
 
     error BalanceShareInactive(address client, uint256 balanceShareId);
     error InvalidAllocationAmount(uint256 amountToAllocate);
@@ -27,7 +26,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     event BalanceShareAssetAllocated(
         address indexed client,
         uint256 indexed balanceShareId,
-        IERC20 indexed asset,
+        ERC20Asset indexed asset,
         uint256 amountAllocated,
         uint256 newAssetRemainder
     );
@@ -75,7 +74,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function getBalanceShareAllocation(
         address client,
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) public view returns (uint256 amountToAllocate) {
         (amountToAllocate,,) = _calculateBalanceShareAllocation(
@@ -91,7 +90,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function getBalanceShareAllocation(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) external view override returns (uint256) {
         return getBalanceShareAllocation(msg.sender, balanceShareId, asset, balanceIncreasedBy);
@@ -113,7 +112,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function getBalanceShareAllocationWithRemainder(
         address client,
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) public view returns (uint256 amountToAllocate, bool remainderIncrease) {
         uint256 newAssetRemainder;
@@ -131,7 +130,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function getBalanceShareAllocationWithRemainder(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) external view override returns (uint256, bool) {
         return getBalanceShareAllocationWithRemainder(msg.sender, balanceShareId, asset, balanceIncreasedBy);
@@ -139,7 +138,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
 
     function _calculateBalanceShareAllocation(
         BalanceShare storage _balanceShare,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy,
         bool useRemainder
     ) internal view returns (
@@ -177,7 +176,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function allocateToBalanceShare(
         address client,
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 amountToAllocate
     ) public payable {
         if (amountToAllocate == 0) {
@@ -209,7 +208,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function allocateToBalanceShare(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 amountToAllocate
     ) external payable override {
         allocateToBalanceShare(msg.sender, balanceShareId, asset, amountToAllocate);
@@ -230,7 +229,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function allocateToBalanceShareWithRemainder(
         uint256 balanceShareId,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 balanceIncreasedBy
     ) public payable {
         if (balanceIncreasedBy > 0) {
@@ -266,7 +265,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function _addAssetToBalanceShare(
         BalanceShare storage _balanceShare,
         BalanceSumCheckpoint storage _currentBalanceSumCheckpoint,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 amountToAllocate,
         uint256 newAssetRemainder
     ) internal {
@@ -277,18 +276,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
         BalanceSumCheckpoint storage _balanceSumCheckpoint = _currentBalanceSumCheckpoint;
 
         // Transfer the asset to this contract
-        if (address(asset) == address(0)) {
-            if (msg.value != amountToAllocate) {
-                revert InvalidMsgValue(amountToAllocate, msg.value);
-            }
-        } else {
-            if (msg.value > 0) {
-                revert InvalidMsgValue(0, msg.value);
-            }
-            if (amountToAllocate > 0) {
-                asset.safeTransferFrom(msg.sender, address(this), amountToAllocate);
-            }
-        }
+        asset.receiveFrom(msg.sender, amountToAllocate);
 
         unchecked {
             BalanceSum storage _currentBalanceSum = _getBalanceSum(_balanceSumCheckpoint, asset);

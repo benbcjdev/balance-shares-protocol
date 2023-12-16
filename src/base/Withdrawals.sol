@@ -8,14 +8,11 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {SafeTransferLib} from "../utils/SafeTransferLib.sol";
-// import {ERC20Utils} from "contracts/libraries/ERC20Utils.sol";
+import {ERC20Asset, ERC20AssetLibrary} from "../types/ERC20Asset.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract Withdrawals is AccountShares, EIP712, Nonces {
-    using SafeTransferLib for IERC20;
-    using SafeTransferLib for address;
+    using ERC20AssetLibrary for ERC20Asset;
 
     struct WithdrawalCheckpointCache {
         bytes32 packedValue;
@@ -35,7 +32,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address indexed client,
         uint256 indexed balanceShareId,
         address indexed account,
-        IERC20 asset,
+        ERC20Asset asset,
         uint256 withdrawAmount,
         address receiver,
         uint256 periodIndex
@@ -62,7 +59,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address client,
         uint256 balanceShareId,
         address account,
-        IERC20[] memory assets,
+        ERC20Asset[] memory assets,
         uint256 periodIndex
     ) public view returns (uint256[] memory withdrawableBalances, uint256 checkpointIterations) {
         (withdrawableBalances,,checkpointIterations) = _getAccountSharePeriodWithdrawableBalances(
@@ -76,7 +73,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
     function _getAccountSharePeriodWithdrawableBalances(
         BalanceShare storage _balanceShare,
         address account,
-        IERC20[] memory assets,
+        ERC20Asset[] memory assets,
         uint256 periodIndex
     ) internal view returns (
         uint256[] memory withdrawableBalances,
@@ -184,7 +181,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         // Loop through assets again (ouch), total the withdrawable asset balance across each BalanceSumCheckpointCache
         unchecked {
             for (uint256 i = 0; i < assetCount;) {
-                IERC20 asset = assets[i];
+                ERC20Asset asset = assets[i];
                 uint256 assetWithdrawBalance;
 
                 // Unpack the withdrawal checkpoint cache
@@ -266,7 +263,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         uint256 balanceShareId,
         address account,
         address receiver,
-        IERC20[] memory assets,
+        ERC20Asset[] memory assets,
         uint256 periodIndex
     ) public returns (uint256[] memory withdrawAmounts) {
         if (msg.sender != account) {
@@ -291,7 +288,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address client,
         uint256 balanceShareId,
         address account,
-        IERC20[] memory assets,
+        ERC20Asset[] memory assets,
         uint256 periodIndex
     ) external returns (uint256[] memory) {
         return withdrawAccountSharePeriodTo(client, balanceShareId, account, account, assets, periodIndex);
@@ -306,7 +303,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         uint256 balanceShareId,
         address account,
         address receiver,
-        IERC20[] memory assets,
+        ERC20Asset[] memory assets,
         uint256 periodIndex,
         uint256 deadline,
         bytes memory signature
@@ -356,7 +353,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         uint256 balanceShareId,
         address account,
         address receiver,
-        IERC20[] memory assets,
+        ERC20Asset[] memory assets,
         uint256 periodIndex
     ) internal returns (uint256[] memory withdrawAmounts) {
         // Get the withdrawable balances
@@ -373,7 +370,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         // Transfer the assets, and write the WithdrawalCheckpointCache updates to storage
         uint256 length = assets.length;
         for (uint256 i = 0; i < length;) {
-            IERC20 asset = assets[i];
+            ERC20Asset asset = assets[i];
 
             // Write the withdrawal storage update for the asset
             assembly ("memory-safe") {
@@ -385,12 +382,8 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
             uint256 amount = withdrawableAmounts[i];
             if (amount > 0) {
 
-                // Transfer the asset
-                if (address(asset) == address(0)) {
-                    receiver.forceSafeTransferETH(amount);
-                } else {
-                    asset.safeTransfer(receiver, amount);
-                }
+                // Transfer the asset to the receiver
+                asset.transferTo(receiver, amount);
 
                 // Emit withdrawal event
                 emit AccountSharePeriodAssetWithdrawal(
