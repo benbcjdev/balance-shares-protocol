@@ -13,25 +13,25 @@ interface IBalanceSharesManager {
 
     function getBalanceShareAllocation(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) external view returns (uint256 amountToAllocate);
 
     function getBalanceShareAllocationWithRemainder(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) external view returns (uint256 amountToAllocate, bool remainderIncrease);
 
     function allocateToBalanceShare(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 amountToAllocate
     ) external payable;
 
     function allocateToBalanceShareWithRemainder(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) external payable;
 

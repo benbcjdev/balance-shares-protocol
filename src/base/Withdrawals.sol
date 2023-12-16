@@ -32,7 +32,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address indexed client,
         uint256 indexed balanceShareId,
         address indexed account,
-        ERC20Asset asset,
+        address asset,
         uint256 withdrawAmount,
         address receiver,
         uint256 periodIndex
@@ -59,7 +59,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address client,
         uint256 balanceShareId,
         address account,
-        ERC20Asset[] memory assets,
+        address[] memory assets,
         uint256 periodIndex
     ) public view returns (uint256[] memory withdrawableBalances, uint256 checkpointIterations) {
         (withdrawableBalances,,checkpointIterations) = _getAccountSharePeriodWithdrawableBalances(
@@ -73,7 +73,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
     function _getAccountSharePeriodWithdrawableBalances(
         BalanceShare storage _balanceShare,
         address account,
-        ERC20Asset[] memory assets,
+        address[] memory assets,
         uint256 periodIndex
     ) internal view returns (
         uint256[] memory withdrawableBalances,
@@ -181,7 +181,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         // Loop through assets again (ouch), total the withdrawable asset balance across each BalanceSumCheckpointCache
         unchecked {
             for (uint256 i = 0; i < assetCount;) {
-                ERC20Asset asset = assets[i];
+                address asset = assets[i];
                 uint256 assetWithdrawBalance;
 
                 // Unpack the withdrawal checkpoint cache
@@ -263,7 +263,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         uint256 balanceShareId,
         address account,
         address receiver,
-        ERC20Asset[] memory assets,
+        address[] memory assets,
         uint256 periodIndex
     ) public returns (uint256[] memory withdrawAmounts) {
         if (msg.sender != account) {
@@ -288,7 +288,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address client,
         uint256 balanceShareId,
         address account,
-        ERC20Asset[] memory assets,
+        address[] memory assets,
         uint256 periodIndex
     ) external returns (uint256[] memory) {
         return withdrawAccountSharePeriodTo(client, balanceShareId, account, account, assets, periodIndex);
@@ -303,7 +303,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         uint256 balanceShareId,
         address account,
         address receiver,
-        ERC20Asset[] memory assets,
+        address[] memory assets,
         uint256 periodIndex,
         uint256 deadline,
         bytes memory signature
@@ -353,7 +353,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         uint256 balanceShareId,
         address account,
         address receiver,
-        ERC20Asset[] memory assets,
+        address[] memory assets,
         uint256 periodIndex
     ) internal returns (uint256[] memory withdrawAmounts) {
         // Get the withdrawable balances
@@ -370,7 +370,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         // Transfer the assets, and write the WithdrawalCheckpointCache updates to storage
         uint256 length = assets.length;
         for (uint256 i = 0; i < length;) {
-            ERC20Asset asset = assets[i];
+            address asset = assets[i];
 
             // Write the withdrawal storage update for the asset
             assembly ("memory-safe") {
@@ -383,7 +383,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
             if (amount > 0) {
 
                 // Transfer the asset to the receiver
-                asset.transferTo(receiver, amount);
+                ERC20Asset.wrap(asset).transferTo(receiver, amount);
 
                 // Emit withdrawal event
                 emit AccountSharePeriodAssetWithdrawal(

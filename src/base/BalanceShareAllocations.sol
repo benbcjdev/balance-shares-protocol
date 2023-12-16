@@ -26,7 +26,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     event BalanceShareAssetAllocated(
         address indexed client,
         uint256 indexed balanceShareId,
-        ERC20Asset indexed asset,
+        address indexed asset,
         uint256 amountAllocated,
         uint256 newAssetRemainder
     );
@@ -74,7 +74,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function getBalanceShareAllocation(
         address client,
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) public view returns (uint256 amountToAllocate) {
         (amountToAllocate,,) = _calculateBalanceShareAllocation(
@@ -90,7 +90,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function getBalanceShareAllocation(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) external view override returns (uint256) {
         return getBalanceShareAllocation(msg.sender, balanceShareId, asset, balanceIncreasedBy);
@@ -112,7 +112,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function getBalanceShareAllocationWithRemainder(
         address client,
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) public view returns (uint256 amountToAllocate, bool remainderIncrease) {
         uint256 newAssetRemainder;
@@ -130,7 +130,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function getBalanceShareAllocationWithRemainder(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) external view override returns (uint256, bool) {
         return getBalanceShareAllocationWithRemainder(msg.sender, balanceShareId, asset, balanceIncreasedBy);
@@ -138,7 +138,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
 
     function _calculateBalanceShareAllocation(
         BalanceShare storage _balanceShare,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy,
         bool useRemainder
     ) internal view returns (
@@ -176,7 +176,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function allocateToBalanceShare(
         address client,
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 amountToAllocate
     ) public payable {
         if (amountToAllocate == 0) {
@@ -208,7 +208,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function allocateToBalanceShare(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 amountToAllocate
     ) external payable override {
         allocateToBalanceShare(msg.sender, balanceShareId, asset, amountToAllocate);
@@ -229,7 +229,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
      */
     function allocateToBalanceShareWithRemainder(
         uint256 balanceShareId,
-        ERC20Asset asset,
+        address asset,
         uint256 balanceIncreasedBy
     ) public payable {
         if (balanceIncreasedBy > 0) {
@@ -265,7 +265,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     function _addAssetToBalanceShare(
         BalanceShare storage _balanceShare,
         BalanceSumCheckpoint storage _currentBalanceSumCheckpoint,
-        ERC20Asset asset,
+        address asset,
         uint256 amountToAllocate,
         uint256 newAssetRemainder
     ) internal {
@@ -276,7 +276,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
         BalanceSumCheckpoint storage _balanceSumCheckpoint = _currentBalanceSumCheckpoint;
 
         // Transfer the asset to this contract
-        asset.receiveFrom(msg.sender, amountToAllocate);
+        ERC20Asset.wrap(asset).receiveFrom(msg.sender, amountToAllocate);
 
         unchecked {
             BalanceSum storage _currentBalanceSum = _getBalanceSum(_balanceSumCheckpoint, asset);
