@@ -15,14 +15,14 @@ contract AccountShares is StorageLayout {
 
     event BalanceShareTotalBPSUpdate(
         address indexed client,
-        uint256 indexed balanceShareId,
+        uint256 indexed clientShareId,
         uint256 oldBps,
         uint256 newBps
     );
 
     event AccountShareBPSUpdate(
         address indexed client,
-        uint256 indexed balanceShareId,
+        uint256 indexed clientShareId,
         address indexed account,
         uint256 newBps,
         uint256 newPeriodIndex,
@@ -31,7 +31,7 @@ contract AccountShares is StorageLayout {
 
     event AccountShareRemovableAtUpdate(
         address indexed client,
-        uint256 indexed balanceShareId,
+        uint256 indexed clientShareId,
         address indexed account,
         uint256 removableAt,
         uint256 newPeriodIndex
@@ -48,25 +48,25 @@ contract AccountShares is StorageLayout {
 
     function getAccountBps(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account
     ) public view returns (uint256 accountBps) {
-        AccountShare storage _accountShare = _getBalanceShare(client, balanceShareId).accounts[account];
+        AccountShare storage _accountShare = _getBalanceShare(client, clientShareId).accounts[account];
         accountBps = _accountShare.periods[_accountShare.periodIndex].bps;
     }
 
     function getAccountCurrentPeriodIndex(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account
     ) public view returns (uint256 currentPeriodIndex) {
-        AccountShare storage _accountShare = _getBalanceShare(client, balanceShareId).accounts[account];
+        AccountShare storage _accountShare = _getBalanceShare(client, clientShareId).accounts[account];
         currentPeriodIndex = _accountShare.periodIndex;
     }
 
     function getAccountDetails(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account
     ) public view returns (
         uint256 bps,
@@ -87,7 +87,7 @@ contract AccountShares is StorageLayout {
             ,
             endBalanceSumIndex
         ) = _getAccountDetailsForPeriod(
-            _getBalanceShare(client, balanceShareId),
+            _getBalanceShare(client, clientShareId),
             account,
             type(uint256).max
         );
@@ -95,12 +95,12 @@ contract AccountShares is StorageLayout {
 
     function getAccountLastWithdrawnAtForPeriod(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         uint256 periodIndex
     ) public view returns (uint256 lastWithdrawnAt) {
         AccountSharePeriod storage _accountSharePeriod = _checkAccountSharePeriodIndex(
-            _getBalanceShare(client, balanceShareId),
+            _getBalanceShare(client, clientShareId),
             account,
             periodIndex
         );
@@ -110,7 +110,7 @@ contract AccountShares is StorageLayout {
 
     function getAccountDetailsForPeriod(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         uint256 periodIndex
     ) public view returns (
@@ -132,7 +132,7 @@ contract AccountShares is StorageLayout {
             endBalanceSumIndex
         ) =
             _getAccountDetailsForPeriod(
-                _getBalanceShare(client, balanceShareId),
+                _getBalanceShare(client, clientShareId),
                 account,
                 periodIndex
             );
@@ -188,7 +188,7 @@ contract AccountShares is StorageLayout {
      * updates.
      * @notice If the update decreases the current BPS share or removable at timestamp for the account, then the current
      * block.timestamp must be greater than the account's existing removable at timestamp.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The uint256 identifier of the client's balance share.
      * @param accounts An array of account addresses to update.
      * @param basisPoints An array of the new basis point share values for each account.
      * @param removableAts An array of the new removable at timestamps, before which the account's BPS cannot be
@@ -196,56 +196,56 @@ contract AccountShares is StorageLayout {
      * @return totalBps The new total BPS for the balance share.
      */
     function setAccountShares(
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address[] memory accounts,
         uint256[] memory basisPoints,
         uint256[] memory removableAts
     ) external returns (uint256 totalBps) {
         BatchArrayChecker.checkArrayLengths(accounts.length, basisPoints.length, removableAts.length);
 
-        totalBps = _updateAccountShares(msg.sender, balanceShareId, accounts, basisPoints, removableAts);
+        totalBps = _updateAccountShares(msg.sender, clientShareId, accounts, basisPoints, removableAts);
     }
 
     /**
      * For the given balance share ID, updates the BPS share for each provided account, or creates a new BPS share for
      * accounts that do not already have an active BPS share (in which case the removable at timestamp will be zero).
-     * @param balanceShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The uint256 identifier of the client's balance share.
      * @param accounts An array of account addresses to update the BPS for.
      * @param basisPoints An array of the new basis point share values for each account.
      * @return totalBps The new total BPS for the balance share.
      */
     function setAccountSharesBps(
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address[] memory accounts,
         uint256[] memory basisPoints
     ) external returns (uint256 totalBps) {
         BatchArrayChecker.checkArrayLengths(accounts.length, basisPoints.length);
 
-        totalBps = _updateAccountShares(msg.sender, balanceShareId, accounts, basisPoints, new uint256[](0));
+        totalBps = _updateAccountShares(msg.sender, clientShareId, accounts, basisPoints, new uint256[](0));
     }
 
     /**
      * Updates the removable at timestamps for the provided accounts. Reverts if the account does not have an active
      * BPS share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The uint256 identifier of the client's balance share.
      * @param accounts An array of account addresses to update the BPS for.
      * @param removableAts An array of the new removable at timestamps, before which the account's BPS cannot be
      * decreased.
      */
     function setAccountSharesRemovableAts(
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address[] memory accounts,
         uint256[] memory removableAts
     ) external {
         BatchArrayChecker.checkArrayLengths(accounts.length, removableAts.length);
 
 
-        _updateAccountShares(msg.sender, balanceShareId, accounts, new uint256[](0), removableAts);
+        _updateAccountShares(msg.sender, clientShareId, accounts, new uint256[](0), removableAts);
     }
 
     function updateAccountShareAsAccountOwner(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         uint256 newBasisPoints,
         uint256 newRemovableAt
     ) external {
@@ -258,7 +258,7 @@ contract AccountShares is StorageLayout {
         uint256[] memory removableAts = new uint256[](1);
         removableAts[0] = newRemovableAt;
 
-        _updateAccountShares(client, balanceShareId, accounts, basisPoints, removableAts);
+        _updateAccountShares(client, clientShareId, accounts, basisPoints, removableAts);
     }
 
     /**
@@ -270,7 +270,7 @@ contract AccountShares is StorageLayout {
      */
     function _updateAccountShares(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address[] memory accounts,
         uint256[] memory basisPoints,
         uint256[] memory removableAts
@@ -289,7 +289,7 @@ contract AccountShares is StorageLayout {
             }
         }
 
-        BalanceShare storage _balanceShare = _getBalanceShare(client, balanceShareId);
+        BalanceShare storage _balanceShare = _getBalanceShare(client, clientShareId);
 
         uint256 balanceSumCheckpointIndex = _balanceShare.balanceSumCheckpointIndex;
         uint256 totalBps;
@@ -401,7 +401,7 @@ contract AccountShares is StorageLayout {
                 // Log bps update
                 emit AccountShareBPSUpdate(
                     client,
-                    balanceShareId,
+                    clientShareId,
                     account,
                     newBps,
                     periodIndex,
@@ -418,7 +418,7 @@ contract AccountShares is StorageLayout {
                 // Log removableAt update
                 emit AccountShareRemovableAtUpdate(
                     client,
-                    balanceShareId,
+                    clientShareId,
                     account,
                     newRemovableAt,
                     periodIndex
@@ -437,7 +437,7 @@ contract AccountShares is StorageLayout {
         _balanceShare.balanceSumCheckpoints[balanceSumCheckpointIndex].totalBps = uint16(newTotalBps);
 
         if (newTotalBps != totalBps) {
-            emit BalanceShareTotalBPSUpdate(client, balanceShareId, totalBps, newTotalBps);
+            emit BalanceShareTotalBPSUpdate(client, clientShareId, totalBps, newTotalBps);
         }
     }
 }

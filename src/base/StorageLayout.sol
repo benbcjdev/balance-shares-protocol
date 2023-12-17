@@ -11,7 +11,7 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
  */
 contract StorageLayout is ERC165 {
 
-mapping(address client => mapping(uint256 balanceShareId => BalanceShare)) internal _balanceShares;
+mapping(address client => mapping(uint256 clientShareId => BalanceShare)) internal _balanceShares;
 
     /**
      * @dev IMPORTANT: Changing the order of variables in this struct could affect the optimized mapping retrieval
@@ -89,16 +89,16 @@ mapping(address client => mapping(uint256 balanceShareId => BalanceShare)) inter
 
     error InvalidAccountSharePeriodIndex(uint256 providedPeriodIndex, uint256 maxAccountPeriodIndex);
 
-    function _getBalanceShare(address client, uint256 balanceShareId) internal pure returns (BalanceShare storage $) {
+    function _getBalanceShare(address client, uint256 clientShareId) internal pure returns (BalanceShare storage $) {
         /// @solidity memory-safe-assembly
         assembly {
             /**
-             * keccak256(balanceShareId . keccak256(client . _balanceShares.slot))
+             * keccak256(clientShareId . keccak256(client . _balanceShares.slot))
              */
             mstore(0, client)
             mstore(0x20, _balanceShares.slot)
             mstore(0x20, keccak256(0, 0x40))
-            mstore(0, balanceShareId)
+            mstore(0, clientShareId)
             $.slot := keccak256(0, 0x40)
         }
     }

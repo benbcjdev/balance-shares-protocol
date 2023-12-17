@@ -25,12 +25,12 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
     }
 
     bytes32 private immutable WITHDRAW_TO_TYPEHASH = keccak256(
-        "WithdrawTo(address client,uint256 balanceShareId,address account,address receiver,address[] assets,uint256 periodIndex,uint256 nonce,uint256 deadline)"
+        "WithdrawTo(address client,uint256 clientShareId,address account,address receiver,address[] assets,uint256 periodIndex,uint256 nonce,uint256 deadline)"
     );
 
     event AccountSharePeriodAssetWithdrawal(
         address indexed client,
-        uint256 indexed balanceShareId,
+        uint256 indexed clientShareId,
         address indexed account,
         address asset,
         uint256 withdrawAmount,
@@ -47,7 +47,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
     /**
      * Get the withdrawable asset balances for the provided period index.
      * @param client The client account for the balance share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The uint256 identifier of the client's balance share.
      * @param account The address of the account
      * @param assets A list of ERC20 assets to get withdrawable balances for (address(0) for ETH).
      * @param periodIndex The period index to withdraw for. Call {getAccountCurrentPeriodIndex} for the current period
@@ -57,12 +57,12 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
      */
     function getAccountSharePeriodWithdrawableBalances(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         address[] memory assets,
         uint256 periodIndex
     ) public view returns (uint256[] memory withdrawableBalances, uint256 checkpointIterations) {
-        BalanceShare storage _balanceShare = _getBalanceShare(client, balanceShareId);
+        BalanceShare storage _balanceShare = _getBalanceShare(client, clientShareId);
 
         (withdrawableBalances,,checkpointIterations) = _getAccountSharePeriodWithdrawableBalances(
             _balanceShare,
@@ -240,7 +240,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
      * address.
      * @notice Requires that the msg.sender is the account owner.
      * @param client The client account for the balance share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The uint256 identifier of the client's balance share.
      * @param account The account share owner.
      * @param receiver The receiver of the withdrawn assets.
      * @param assets A list of ERC20 assets to get withdrawable balances for (address(0) for ETH).
@@ -250,7 +250,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
      */
     function withdrawAccountSharePeriodTo(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         address receiver,
         address[] memory assets,
@@ -262,7 +262,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
 
         withdrawAmounts = _processAcountSharePeriodWithdrawal(
             client,
-            balanceShareId,
+            clientShareId,
             account,
             receiver,
             assets,
@@ -276,12 +276,12 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
      */
     function withdrawAccountSharePeriod(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         address[] memory assets,
         uint256 periodIndex
     ) external returns (uint256[] memory) {
-        return withdrawAccountSharePeriodTo(client, balanceShareId, account, account, assets, periodIndex);
+        return withdrawAccountSharePeriodTo(client, clientShareId, account, account, assets, periodIndex);
     }
 
     /**
@@ -290,7 +290,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
      */
     function withdrawAccountSharePeriodToBySig(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         address receiver,
         address[] memory assets,
@@ -313,7 +313,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
             _hashTypedDataV4(keccak256(abi.encode(
                 WITHDRAW_TO_TYPEHASH,
                 client,
-                balanceShareId,
+                clientShareId,
                 account,
                 receiver,
                 encodedAssets,
@@ -330,7 +330,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
 
         withdrawAmounts = _processAcountSharePeriodWithdrawal(
             client,
-            balanceShareId,
+            clientShareId,
             account,
             receiver,
             assets,
@@ -340,13 +340,13 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
 
     function _processAcountSharePeriodWithdrawal(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address account,
         address receiver,
         address[] memory assets,
         uint256 periodIndex
     ) internal returns (uint256[] memory withdrawAmounts) {
-        BalanceShare storage _balanceShare = _getBalanceShare(client, balanceShareId);
+        BalanceShare storage _balanceShare = _getBalanceShare(client, clientShareId);
         AccountSharePeriod storage _accountSharePeriod = _checkAccountSharePeriodIndex(
             _balanceShare,
             account,
@@ -384,7 +384,7 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
                 // Emit withdrawal event
                 emit AccountSharePeriodAssetWithdrawal(
                     client,
-                    balanceShareId,
+                    clientShareId,
                     account,
                     asset,
                     amount,

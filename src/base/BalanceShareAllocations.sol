@@ -11,19 +11,19 @@ import {ERC20Asset, ERC20AssetLibrary} from "../types/ERC20Asset.sol";
 /**
  * @title Balance share processing functions for BalanceSharesSingleton
  * @author Ben Jett - @BCJdevelopment
- * @notice Balance shares are stored under a mapping of uint256 balance share identifiers, where each balance share ID
- * represents a unique balance share for the specified client.
+ * @notice Each balance share is identified by the client address and the client's share ID. This means that two clients
+ * could each use the same client share ID, and they still point to two distinct balance share ID's.
  *
- * Therefore, client address (0xaa)'s balance share ID uint256(1) is a completely separate balance share than client
- * address (0xbb)'s balance share ID uint256(1), even though the balance share ID is the same.
+ * For example, client address(0xAA)'s client share ID uint256(1) is a completely separate balance share than client
+ * address(0xBB)'s client share ID uint256(1), even though the client share ID is the same.
  *
- * Each of the balance share allocation functions below require specifying both the client address and the client's
- * balance share ID in order to apply the allocations to the correct balance share.
+ * Each of the balance share allocation functions below require specifying both the client address and the client share
+ * ID in order to apply the allocations to the correct balance share.
  */
 contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
     using ERC20AssetLibrary for ERC20Asset;
 
-    error BalanceShareInactive(address client, uint256 balanceShareId);
+    error BalanceShareInactive(address client, uint256 clientShareId);
     error InvalidAllocationAmount(uint256 amountToAllocate);
     error InvalidMsgValue(uint256 expectedValue, uint256 actualValue);
 
@@ -33,7 +33,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
      */
     event BalanceShareAssetAllocated(
         address indexed client,
-        uint256 indexed balanceShareId,
+        uint256 indexed clientShareId,
         address indexed asset,
         uint256 amountAllocated,
         uint256 newAssetRemainder
@@ -48,20 +48,20 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
     /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareTotalBPS(
         address client,
-        uint256 balanceShareId
+        uint256 clientShareId
     ) public view override returns (uint256 totalBps) {
-        totalBps = _getCurrentBalanceSumCheckpoint(_getBalanceShare(client, balanceShareId)).totalBps;
+        totalBps = _getCurrentBalanceSumCheckpoint(_getBalanceShare(client, clientShareId)).totalBps;
     }
 
     /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareAllocation(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy
     ) public view override returns (uint256 amountToAllocate) {
         (amountToAllocate,,) = _calculateBalanceShareAllocation(
-            _getBalanceShare(client, balanceShareId),
+            _getBalanceShare(client, clientShareId),
             asset,
             balanceIncreasedBy,
             false
@@ -71,13 +71,13 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
     /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareAllocationWithRemainder(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy
     ) public view override returns (uint256 amountToAllocate, bool remainderIncrease) {
         uint256 newAssetRemainder;
         (amountToAllocate, newAssetRemainder,) = _calculateBalanceShareAllocation(
-            _getBalanceShare(client, balanceShareId),
+            _getBalanceShare(client, clientShareId),
             asset,
             balanceIncreasedBy,
             true
@@ -118,7 +118,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
     /// @inheritdoc IBalanceShareAllocations
     function allocateToBalanceShare(
         address client,
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address asset,
         uint256 amountToAllocate
     ) public payable override {
@@ -126,12 +126,12 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
             revert InvalidAllocationAmount(amountToAllocate);
         }
 
-        BalanceShare storage _balanceShare = _getBalanceShare(client, balanceShareId);
+        BalanceShare storage _balanceShare = _getBalanceShare(client, clientShareId);
         BalanceSumCheckpoint storage _currentBalanceSumCheckpoint = _getCurrentBalanceSumCheckpoint(_balanceShare);
 
         // Check that the balance share is active
         if (_currentBalanceSumCheckpoint.totalBps == 0) {
-            revert BalanceShareInactive(client, balanceShareId);
+            revert BalanceShareInactive(client, clientShareId);
         }
 
         // Add the amount to the share (use MAX_BPS for remainder to signal no change)
@@ -143,17 +143,17 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
             MAX_BPS
         );
 
-        emit BalanceShareAssetAllocated(client, balanceShareId, asset, amountToAllocate, 0);
+        emit BalanceShareAssetAllocated(client, clientShareId, asset, amountToAllocate, 0);
     }
 
     /// @inheritdoc IBalanceShareAllocations
     function allocateToBalanceShareWithRemainder(
-        uint256 balanceShareId,
+        uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy
     ) public payable override {
         if (balanceIncreasedBy > 0) {
-            BalanceShare storage _balanceShare = _getBalanceShare(msg.sender, balanceShareId);
+            BalanceShare storage _balanceShare = _getBalanceShare(msg.sender, clientShareId);
 
             // Calculate the amount to allocate and asset remainder internally
             (
@@ -170,7 +170,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
                 newAssetRemainder
             );
 
-            emit BalanceShareAssetAllocated(msg.sender, balanceShareId, asset, amountToAllocate, newAssetRemainder);
+            emit BalanceShareAssetAllocated(msg.sender, clientShareId, asset, amountToAllocate, newAssetRemainder);
         }
     }
 
