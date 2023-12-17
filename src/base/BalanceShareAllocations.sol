@@ -11,14 +11,21 @@ import {ERC20Asset, ERC20AssetLibrary} from "../types/ERC20Asset.sol";
 /**
  * @title Balance share processing functions for BalanceSharesSingleton
  * @author Ben Jett - @BCJdevelopment
- * @notice Each balance share is identified by the client address and the client's share ID. This means that two clients
- * could each use the same client share ID, and they still point to two distinct balance share ID's.
+ * @notice Each balance share is identified by the `client` address and the uint256 `clientShareId`. This means that two
+ * clients could each use the same `clientShareId`, and they will still point to two distinct balance shares.
  *
  * For example, client address(0xAA)'s client share ID uint256(1) is a completely separate balance share than client
  * address(0xBB)'s client share ID uint256(1), even though the client share ID is the same.
  *
- * Each of the balance share allocation functions below require specifying both the client address and the client share
- * ID in order to apply the allocations to the correct balance share.
+ * This is because the `balanceShareId` is the keccak256 hash of the ABI-encoded `client` address and uint256
+ * `clientShareId`.
+ *
+ * Therefore, each client can create as many of their own distinct balance shares as they want by providing their own
+ * `clientShareId` for each distinct balance share. And for each balance share, the client can add/update/remove as
+ * many account shares as they want.
+ *
+ * Each of the balance share allocation functions below require specifying both the `client` address and the
+ * `clientShareId` in order to apply the allocations to the correct balance share.
  */
 contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
     using ERC20AssetLibrary for ERC20Asset;

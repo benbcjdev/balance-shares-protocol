@@ -8,7 +8,7 @@ interface IBalanceShareAllocations {
     /**
      * Returns the current total BPS for the given balance share (the combined BPS share of all active account shares).
      * @param client The client address.
-     * @param clientShareId The uint256 identifier for the client's balance share.
+     * @param clientShareId The client-provided uint256 identifier for the client's balance share.
      * @return totalBps The current total BPS across all account shares for this balance share.
      */
     function getBalanceShareTotalBPS(
@@ -20,7 +20,7 @@ interface IBalanceShareAllocations {
      * For the provided balance share and asset, returns the amount of the asset to send to this contract for the
      * provided amount that the balance increased by (as a function of the balance share's total BPS).
      * @param client The client address.
-     * @param clientShareId The uint256 identifier for the client's balance share.
+     * @param clientShareId The client-provided uint256 identifier for the client's balance share.
      * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
      * @param balanceIncreasedBy The amount that the total balance share increased by.
      * @return amountToAllocate The amount of the asset that should be allocated to the balance share. Mathematically:
@@ -38,7 +38,7 @@ interface IBalanceShareAllocations {
      * This is useful for calculations with small balance increase amounts relative to the max BPS (10,000). Use this
      * in conjunction with {allocateToBalanceShareWithRemainder} to track the remainders over each allocation.
      * @param client The client address.
-     * @param clientShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The client-provided uint256 identifier of the client balance share.
      * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
      * @param balanceIncreasedBy The amount that the total balance share increased by.
      * @return amountToAllocate The amount of the asset that should be allocated to the balance share. Mathematically:
@@ -57,7 +57,7 @@ interface IBalanceShareAllocations {
      * Transfers the specified amount to allocate of the given ERC20 asset from the msg.sender to this contract to be
      * split amongst the account shares for this balance share ID.
      * @param client The client address.
-     * @param clientShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The client-provided uint256 identifier of the client balance share.
      * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
      * @param amountToAllocate The amount of the asset to transfer. If the asset is address(0), this must equal the
      * msg.value. Otherwise, this contract must be approved to transfer at least this amount of the ERC20 asset.
@@ -76,7 +76,7 @@ interface IBalanceShareAllocations {
      * @dev The msg.sender is used as the client address for this function, meaning only the client manager of a balance
      * share ID can process balance increases with the remainder included. This is to prevent an attack vector where
      * outside parties falsely increment the remainder right up to the threshold.
-     * @param clientShareId The uint256 identifier of the client's balance share.
+     * @param clientShareId The client-provided uint256 identifier of the client balance share.
      * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
      * @param balanceIncreasedBy The amount of the asset to transfer. If the asset is address(0), this must equal the
      * msg.value. Otherwise, this contract must be approved to transfer at least this amount of the ERC20 asset.

@@ -11,7 +11,7 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
  */
 contract StorageLayout is ERC165 {
 
-mapping(address client => mapping(uint256 clientShareId => BalanceShare)) internal _balanceShares;
+    mapping(uint256 balanceShareId => BalanceShare) internal _balanceShares;
 
     /**
      * @dev IMPORTANT: Changing the order of variables in this struct could affect the optimized mapping retrieval
@@ -89,25 +89,53 @@ mapping(address client => mapping(uint256 clientShareId => BalanceShare)) intern
 
     error InvalidAccountSharePeriodIndex(uint256 providedPeriodIndex, uint256 maxAccountPeriodIndex);
 
-    function _getBalanceShare(address client, uint256 clientShareId) internal pure returns (BalanceShare storage $) {
-        /// @solidity memory-safe-assembly
-        assembly {
+    /**
+     * Returns the balance share ID for the given client address and client share ID.
+     * @param client The client address.
+     * @param clientShareId The client-provided uint256 identifier of the client balance share.
+     * @return balanceShareId The balance share ID, which is the keccak256 hash of the ABI-encoded client address and
+     * uint256 client share ID.
+     */
+    function getBalanceShareId(address client, uint256 clientShareId) public pure returns (uint256 balanceShareId) {
+        return _getBalanceShareId(client, clientShareId);
+    }
+
+    function _getBalanceShareId(address client, uint256 clientShareId) internal pure returns (uint256 balanceShareId) {
+        assembly ("memory-safe") {
+            mstore(0x00, client)
+            mstore(0x20, clientShareId)
+            balanceShareId := keccak256(0x00, 0x40)
+        }
+    }
+
+    function _getBalanceShare(uint256 balanceShareId) internal pure returns (BalanceShare storage $) {
+        assembly ("memory-safe") {
             /**
-             * keccak256(clientShareId . keccak256(client . _balanceShares.slot))
+             * keccak256(balanceShareId . _balanceShares.slot)
              */
-            mstore(0, client)
+            mstore(0x00, balanceShareId)
             mstore(0x20, _balanceShares.slot)
-            mstore(0x20, keccak256(0, 0x40))
-            mstore(0, clientShareId)
-            $.slot := keccak256(0, 0x40)
+            $.slot := keccak256(0x00, 0x40)
+        }
+    }
+
+    function _getBalanceShare(address client, uint256 clientShareId) internal pure returns (BalanceShare storage $) {
+        assembly ("memory-safe") {
+            /**
+             * keccak256(keccak256(client . clientShareId) . _balanceShares.slot)
+             */
+            mstore(0x00, client)
+            mstore(0x20, clientShareId)
+            mstore(0x00, keccak256(0x00, 0x40)) // Hash balanceShareId first
+            mstore(0x20, _balanceShares.slot)
+            $.slot := keccak256(0x00, 0x40)
         }
     }
 
     function _getCurrentBalanceSumCheckpoint(
         BalanceShare storage _balanceShare
     ) internal view returns (BalanceSumCheckpoint storage $) {
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             /**
              * keccak256(_balanceShare.balanceSumCheckpointIndex . _balanceShare.balanceSumCheckpoints.slot))
              */
@@ -121,8 +149,7 @@ mapping(address client => mapping(uint256 clientShareId => BalanceShare)) intern
         BalanceSumCheckpoint storage _balanceSumCheckpoint,
         address asset
     ) internal pure returns (BalanceSum storage $) {
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             /**
              * keccak256(address . _balanceSumCheckpoint.balanceSums.slot))
              */

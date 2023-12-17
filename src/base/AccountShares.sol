@@ -16,25 +16,24 @@ contract AccountShares is StorageLayout {
     event BalanceShareTotalBPSUpdate(
         address indexed client,
         uint256 indexed clientShareId,
+        uint256 indexed balanceShareId,
         uint256 oldBps,
         uint256 newBps
     );
 
     event AccountShareBPSUpdate(
-        address indexed client,
-        uint256 indexed clientShareId,
+        uint256 indexed balanceShareId,
         address indexed account,
+        uint256 indexed newPeriodIndex,
         uint256 newBps,
-        uint256 newPeriodIndex,
         uint256 removableAt
     );
 
     event AccountShareRemovableAtUpdate(
-        address indexed client,
-        uint256 indexed clientShareId,
+        uint256 indexed balanceShareId,
         address indexed account,
-        uint256 removableAt,
-        uint256 newPeriodIndex
+        uint256 indexed periodIndex,
+        uint256 removableAt
     );
 
     error BalanceSumCheckpointIndexOverflow(uint256 maxIndex);
@@ -289,7 +288,8 @@ contract AccountShares is StorageLayout {
             }
         }
 
-        BalanceShare storage _balanceShare = _getBalanceShare(client, clientShareId);
+        uint256 balanceShareId = _getBalanceShareId(client, clientShareId);
+        BalanceShare storage _balanceShare = _getBalanceShare(balanceShareId);
 
         uint256 balanceSumCheckpointIndex = _balanceShare.balanceSumCheckpointIndex;
         uint256 totalBps;
@@ -400,11 +400,10 @@ contract AccountShares is StorageLayout {
 
                 // Log bps update
                 emit AccountShareBPSUpdate(
-                    client,
-                    clientShareId,
+                    balanceShareId,
                     account,
-                    newBps,
                     periodIndex,
+                    newBps,
                     newRemovableAt
                 );
             } else {
@@ -417,11 +416,10 @@ contract AccountShares is StorageLayout {
 
                 // Log removableAt update
                 emit AccountShareRemovableAtUpdate(
-                    client,
-                    clientShareId,
+                    balanceShareId,
                     account,
-                    newRemovableAt,
-                    periodIndex
+                    periodIndex,
+                    newRemovableAt
                 );
             }
 
@@ -437,7 +435,13 @@ contract AccountShares is StorageLayout {
         _balanceShare.balanceSumCheckpoints[balanceSumCheckpointIndex].totalBps = uint16(newTotalBps);
 
         if (newTotalBps != totalBps) {
-            emit BalanceShareTotalBPSUpdate(client, clientShareId, totalBps, newTotalBps);
+            emit BalanceShareTotalBPSUpdate(
+                client,
+                clientShareId,
+                balanceShareId,
+                totalBps,
+                newTotalBps
+            );
         }
     }
 }
