@@ -64,11 +64,13 @@ mapping(address client => mapping(uint256 balanceShareId => BalanceShare)) inter
         uint48 startBalanceSumIndex;
         // Balance sum index where this account share period ends, or MAX_INDEX when active (non-inclusive)
         uint48 endBalanceSumIndex;
-        // Block number this checkpoint was initialized
+        // Block number this period was initialized
         uint48 initializedAtBlock;
-        // Timestamp in seconds at which the account share bps can be decreased or removed by the client
+        // Timestamp at which the account share bps can be decreased or removed by the client
         uint48 removableAt;
-        // Tracks the current balance sum position for the last withdrawal per asset
+        // Timestamp at which a withdrawal was last processed for the period (asset independent)
+        uint48 lastWithdrawnAt;
+        // Tracks a snapshot of the balance sum position for the last account withdrawal (per asset)
         mapping(address asset => WithdrawalCheckpoint) withdrawalCheckpoints;
     }
 
@@ -130,4 +132,19 @@ mapping(address client => mapping(uint256 balanceShareId => BalanceShare)) inter
         }
     }
 
+    /// @dev Checks that the periodIndex is not out of range for the account on the balance share, returns storage ref
+    function _checkAccountSharePeriodIndex(
+        BalanceShare storage _balanceShare,
+        address account,
+        uint256 periodIndex
+    ) internal view returns (AccountSharePeriod storage _accountSharePeriod) {
+        AccountShare storage _accountShare = _balanceShare.accounts[account];
+
+        uint256 maxPeriodIndex = _accountShare.periodIndex;
+        if (periodIndex > maxPeriodIndex) {
+            revert InvalidAccountSharePeriodIndex(periodIndex, maxPeriodIndex);
+        }
+
+        _accountSharePeriod = _accountShare.periods[periodIndex];
+    }
 }

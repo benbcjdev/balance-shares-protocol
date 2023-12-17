@@ -25,7 +25,7 @@ contract AccountShares is StorageLayout {
         uint256 indexed balanceShareId,
         address indexed account,
         uint256 newBps,
-        uint256 periodIndex,
+        uint256 newPeriodIndex,
         uint256 removableAt
     );
 
@@ -34,7 +34,7 @@ contract AccountShares is StorageLayout {
         uint256 indexed balanceShareId,
         address indexed account,
         uint256 removableAt,
-        uint256 periodIndex
+        uint256 newPeriodIndex
     );
 
     error BalanceSumCheckpointIndexOverflow(uint256 maxIndex);
@@ -72,16 +72,32 @@ contract AccountShares is StorageLayout {
         uint256 bps,
         uint256 removableAt,
         uint256 initializedAtBlock,
+        uint256 lastWithdrawnAt,
         uint256 currentPeriodIndex,
         uint256 maxCheckpointIterations
     ) {
-        (bps, removableAt, initializedAtBlock, currentPeriodIndex, maxCheckpointIterations) =
+        (bps, removableAt, initializedAtBlock, lastWithdrawnAt, currentPeriodIndex, maxCheckpointIterations) =
             _getAccountDetailsForPeriod(
                 _getBalanceShare(client, balanceShareId),
                 account,
                 type(uint256).max
             );
     }
+
+    function getAccountLastWithdrawnAtForPeriod(
+        address client,
+        uint256 balanceShareId,
+        address account,
+        uint256 periodIndex
+    ) public view returns (uint256 lastWithdrawnAt) {
+        AccountSharePeriod storage _accountSharePeriod = _checkAccountSharePeriodIndex(
+            _getBalanceShare(client, balanceShareId),
+            account,
+            periodIndex
+        );
+        lastWithdrawnAt = _accountSharePeriod.lastWithdrawnAt;
+    }
+
 
     function getAccountDetailsForPeriod(
         address client,
@@ -92,9 +108,10 @@ contract AccountShares is StorageLayout {
         uint256 bps,
         uint256 removableAt,
         uint256 initializedAtBlock,
+        uint256 lastWithdrawnAt,
         uint256 maxCheckpointIterations
     ) {
-        (bps, removableAt, initializedAtBlock,, maxCheckpointIterations) = _getAccountDetailsForPeriod(
+        (bps, removableAt, initializedAtBlock, lastWithdrawnAt,, maxCheckpointIterations) = _getAccountDetailsForPeriod(
             _getBalanceShare(client, balanceShareId),
             account,
             periodIndex
@@ -109,6 +126,7 @@ contract AccountShares is StorageLayout {
         uint256 bps,
         uint256 removableAt,
         uint256 initializedAtBlock,
+        uint256 lastWithdrawnAt,
         uint256 maxPeriodIndex,
         uint256 maxCheckpointIterations
     ) {
@@ -124,10 +142,11 @@ contract AccountShares is StorageLayout {
         }
 
         AccountSharePeriod storage _accountSharePeriod = _accountShare.periods[periodIndex];
-        (bps, removableAt, initializedAtBlock) = (
+        (bps, removableAt, initializedAtBlock, lastWithdrawnAt) = (
             _accountSharePeriod.bps,
             _accountSharePeriod.initializedAtBlock,
-            _accountSharePeriod.removableAt
+            _accountSharePeriod.removableAt,
+            _accountSharePeriod.lastWithdrawnAt
         );
 
         (uint256 startBalanceSumIndex, uint256 endBalanceSumIndex) = (

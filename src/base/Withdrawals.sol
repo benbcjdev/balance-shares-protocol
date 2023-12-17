@@ -62,19 +62,19 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address[] memory assets,
         uint256 periodIndex
     ) public view returns (uint256[] memory withdrawableBalances, uint256 checkpointIterations) {
+        BalanceShare storage _balanceShare = _getBalanceShare(client, balanceShareId);
+
         (withdrawableBalances,,checkpointIterations) = _getAccountSharePeriodWithdrawableBalances(
-            _getBalanceShare(client, balanceShareId),
-            account,
+            _balanceShare,
             assets,
-            periodIndex
+            _checkAccountSharePeriodIndex(_balanceShare, account, periodIndex)
         );
     }
 
     function _getAccountSharePeriodWithdrawableBalances(
         BalanceShare storage _balanceShare,
-        address account,
         address[] memory assets,
-        uint256 periodIndex
+        AccountSharePeriod storage _accountSharePeriod
     ) internal view returns (
         uint256[] memory withdrawableBalances,
         WithdrawalCheckpointCache[] memory withdrawalCheckpointCaches,
@@ -84,16 +84,6 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         if (assetCount == 0) {
             revert MissingAssets();
         }
-
-        AccountShare storage _accountShare = _balanceShare.accounts[account];
-        {
-            uint256 maxPeriodIndex = _accountShare.periodIndex;
-            if (periodIndex > maxPeriodIndex) {
-                revert InvalidAccountSharePeriodIndex(periodIndex, maxPeriodIndex);
-            }
-        }
-
-        AccountSharePeriod storage _accountSharePeriod = _accountShare.periods[periodIndex];
 
         withdrawableBalances = new uint256[](assetCount);
         withdrawalCheckpointCaches = new WithdrawalCheckpointCache[](assetCount);
@@ -356,15 +346,21 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
         address[] memory assets,
         uint256 periodIndex
     ) internal returns (uint256[] memory withdrawAmounts) {
+        BalanceShare storage _balanceShare = _getBalanceShare(client, balanceShareId);
+        AccountSharePeriod storage _accountSharePeriod = _checkAccountSharePeriodIndex(
+            _balanceShare,
+            account,
+            periodIndex
+        );
+
         // Get the withdrawable balances
         (
             uint256[] memory withdrawableAmounts,
             WithdrawalCheckpointCache[] memory withdrawalCheckpointCaches,
         ) = _getAccountSharePeriodWithdrawableBalances(
-            _getBalanceShare(client, balanceShareId),
-            account,
+            _balanceShare,
             assets,
-            periodIndex
+            _accountSharePeriod
         );
 
         // Transfer the assets, and write the WithdrawalCheckpointCache updates to storage
@@ -399,6 +395,9 @@ abstract contract Withdrawals is AccountShares, EIP712, Nonces {
 
             unchecked { ++i; }
         }
+
+        // Write the withdraw timestamp to storage for the AccountSharePeriod
+        _accountSharePeriod.lastWithdrawnAt = uint48(block.timestamp);
 
         // Return the amounts withdrawn
         withdrawAmounts = withdrawableAmounts;
