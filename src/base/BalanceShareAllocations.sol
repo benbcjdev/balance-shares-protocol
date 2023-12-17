@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Primordium Contracts
+// Balance Shares Protocol Contracts
 
 pragma solidity ^0.8.20;
 
