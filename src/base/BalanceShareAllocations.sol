@@ -5,14 +5,22 @@ pragma solidity ^0.8.20;
 
 import {StorageLayout} from "./StorageLayout.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IBalanceSharesManager} from "../interfaces/IBalanceSharesManager.sol";
+import {IBalanceShareAllocations} from "../interfaces/IBalanceShareAllocations.sol";
 import {ERC20Asset, ERC20AssetLibrary} from "../types/ERC20Asset.sol";
 
 /**
  * @title Balance share processing functions for BalanceSharesSingleton
  * @author Ben Jett - @BCJdevelopment
+ * @notice Balance shares are stored under a mapping of uint256 balance share identifiers, where each balance share ID
+ * represents a unique balance share for the specified client.
+ *
+ * Therefore, client address (0xaa)'s balance share ID uint256(1) is a completely separate balance share than client
+ * address (0xbb)'s balance share ID uint256(1), even though the balance share ID is the same.
+ *
+ * Each of the balance share allocation functions below require specifying both the client address and the client's
+ * balance share ID in order to apply the allocations to the correct balance share.
  */
-contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
+contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
     using ERC20AssetLibrary for ERC20Asset;
 
     error BalanceShareInactive(address client, uint256 balanceShareId);
@@ -21,7 +29,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
 
     /**
      * Emitted when an asset is allocated to a balance share for the specified client and balance share ID.
-     * @notice The new asset remainder will only be included if the amountAllocated is zero.
+     * @dev The new asset remainder will only be included if the amountAllocated is zero.
      */
     event BalanceShareAssetAllocated(
         address indexed client,
@@ -33,50 +41,25 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
-            interfaceId == type(IBalanceSharesManager).interfaceId ||
+            interfaceId == type(IBalanceShareAllocations).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
-    /**
-     * Returns the current total BPS for the given balance share (the combined BPS share of all active account shares).
-     * @param client The client account for the balance share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
-     * @return totalBps The current total BPS across all account shares for this balance share.
-     */
+    /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareTotalBPS(
         address client,
         uint256 balanceShareId
-    ) public view returns (uint256 totalBps) {
-        totalBps = _getCurrentBalanceSumCheckpoint(
-            _getBalanceShare(client, balanceShareId)
-        ).totalBps;
+    ) public view override returns (uint256 totalBps) {
+        totalBps = _getCurrentBalanceSumCheckpoint(_getBalanceShare(client, balanceShareId)).totalBps;
     }
 
-    /**
-     * Same as above, but uses the msg.sender as the "client" parameter.
-     */
-    function getBalanceShareTotalBPS(
-        uint256 balanceShareId
-    ) public view override returns (uint256) {
-        return getBalanceShareTotalBPS(msg.sender, balanceShareId);
-    }
-
-    /**
-     * For the provided balance share and asset, returns the amount of the asset to send to this contract for the
-     * provided amount that the balance increased by (as a function of the balance share's total BPS).
-     * @param client The client account for the balance share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
-     * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
-     * @param balanceIncreasedBy The amount that the total balance share increased by.
-     * @return amountToAllocate The amount of the asset that should be allocated to the balance share. Mathematically:
-     * amountToAllocate = balanceIncreasedBy * totalBps / 10_000
-     */
+    /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareAllocation(
         address client,
         uint256 balanceShareId,
         address asset,
         uint256 balanceIncreasedBy
-    ) public view returns (uint256 amountToAllocate) {
+    ) public view override returns (uint256 amountToAllocate) {
         (amountToAllocate,,) = _calculateBalanceShareAllocation(
             _getBalanceShare(client, balanceShareId),
             asset,
@@ -85,36 +68,13 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
         );
     }
 
-    /**
-     * Same as {getBalanceShareAllocation} above, but uses the msg.sender as the "client" parameter.
-     */
-    function getBalanceShareAllocation(
-        uint256 balanceShareId,
-        address asset,
-        uint256 balanceIncreasedBy
-    ) external view override returns (uint256) {
-        return getBalanceShareAllocation(msg.sender, balanceShareId, asset, balanceIncreasedBy);
-    }
-
-    /**
-     * Same as {getBalanceShareAllocation}, but also includes integer remainders from the previous balance allocation.
-     * This is useful for calculations with small balance increase amounts relative to the max BPS (10,000). Use this
-     * in conjunction with {allocateToBalanceShareWithRemainder} to track the remainders over each allocation.
-     * @param client The client account for the balance share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
-     * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
-     * @param balanceIncreasedBy The amount that the total balance share increased by.
-     * @return amountToAllocate The amount of the asset that should be allocated to the balance share. Mathematically:
-     * amountToAllocate = (balanceIncreasedBy + previousAssetRemainder) * totalBps / 10_000
-     * @return remainderIncrease A bool indicating whether or not the remainder increased as a result of this function.
-     * Will return true if the remainder increased, even if the amountToAllocate is zero.
-     */
+    /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareAllocationWithRemainder(
         address client,
         uint256 balanceShareId,
         address asset,
         uint256 balanceIncreasedBy
-    ) public view returns (uint256 amountToAllocate, bool remainderIncrease) {
+    ) public view override returns (uint256 amountToAllocate, bool remainderIncrease) {
         uint256 newAssetRemainder;
         (amountToAllocate, newAssetRemainder,) = _calculateBalanceShareAllocation(
             _getBalanceShare(client, balanceShareId),
@@ -123,17 +83,6 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
             true
         );
         remainderIncrease = newAssetRemainder < MAX_BPS;
-    }
-
-    /**
-     * Same as {getBalanceShareAllocationWithRemainder} above, but uses the msg.sender as the "client" parameter.
-     */
-    function getBalanceShareAllocationWithRemainder(
-        uint256 balanceShareId,
-        address asset,
-        uint256 balanceIncreasedBy
-    ) external view override returns (uint256, bool) {
-        return getBalanceShareAllocationWithRemainder(msg.sender, balanceShareId, asset, balanceIncreasedBy);
     }
 
     function _calculateBalanceShareAllocation(
@@ -166,21 +115,13 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
         }
     }
 
-    /**
-     * Transfers the specified amount to allocate of the given ERC20 asset from the msg.sender to this contract to be
-     * split amongst the account shares for this balance share ID.
-     * @param client The client account for the balance share.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
-     * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
-     * @param amountToAllocate The amount of the asset to transfer. This must equal the msg.value for asset address(0),
-     * otherwise this contract must be approved to transfer at least this amount for the ERC20 asset.
-     */
+    /// @inheritdoc IBalanceShareAllocations
     function allocateToBalanceShare(
         address client,
         uint256 balanceShareId,
         address asset,
         uint256 amountToAllocate
-    ) public payable {
+    ) public payable override {
         if (amountToAllocate == 0) {
             revert InvalidAllocationAmount(amountToAllocate);
         }
@@ -205,35 +146,12 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
         emit BalanceShareAssetAllocated(client, balanceShareId, asset, amountToAllocate, 0);
     }
 
-    /**
-     * Same as {allocateToBalanceShare} above, but uses msg.sender as the "client" parameter.
-     */
-    function allocateToBalanceShare(
-        uint256 balanceShareId,
-        address asset,
-        uint256 amountToAllocate
-    ) external payable override {
-        allocateToBalanceShare(msg.sender, balanceShareId, asset, amountToAllocate);
-    }
-
-    /**
-     * Calculates the amount to allocate using the provided amount the balance increased by, adding in the integer
-     * remainder from the last balance allocation, and transfers the amount to allocate to this contract. Tracks the
-     * resulting remainder for the next function call as well.
-     * @notice The msg.sender is used as the client for this function, meaning only the client owner of a balance share
-     * can process balance increases with the remainder included. This is to prevent an attack vector where outside
-     * parties increment the remainder right up to the threshold.
-     * @dev Intended to be used in conjunction with the {getBalanceShareAllocationWithRemainder} function.
-     * @param balanceShareId The uint256 identifier of the client's balance share.
-     * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
-     * @param balanceIncreasedBy The amount of the asset to transfer. This must equal the msg.value for asset of
-     * address(0), otherwise this contract must be approved to transfer at least this amount for the ERC20 asset.
-     */
+    /// @inheritdoc IBalanceShareAllocations
     function allocateToBalanceShareWithRemainder(
         uint256 balanceShareId,
         address asset,
         uint256 balanceIncreasedBy
-    ) public payable {
+    ) public payable override {
         if (balanceIncreasedBy > 0) {
             BalanceShare storage _balanceShare = _getBalanceShare(msg.sender, balanceShareId);
 
