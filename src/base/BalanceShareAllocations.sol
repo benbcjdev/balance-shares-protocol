@@ -148,6 +148,10 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
     ) {
         _currentBalanceSumCheckpoint = _getCurrentBalanceSumCheckpoint(_balanceShare);
 
+        if (!useRemainder) {
+            newAssetRemainder = MAX_BPS;
+        }
+
         uint256 totalBps = _currentBalanceSumCheckpoint.totalBps;
         if (totalBps > 0) {
             if (useRemainder) {
@@ -155,8 +159,6 @@ contract BalanceShareAllocations is StorageLayout, IBalanceSharesManager {
                 balanceIncreasedBy += currentAssetRemainder;
                 // Asset remainder is the mulmod
                 newAssetRemainder = mulmod(balanceIncreasedBy, totalBps, MAX_BPS);
-            } else {
-                newAssetRemainder = MAX_BPS;
             }
 
             // Use muldiv to protect against potential overflow

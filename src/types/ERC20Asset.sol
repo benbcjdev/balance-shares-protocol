@@ -9,7 +9,7 @@ type ERC20Asset is address;
  * @title ERC20AssetLibrary
  * @author Ben Jett - @BCJdevelopment
  * @notice Defines gas-optimized transfer functions for ERC20 assets.
- * @author Modified from Solady (https://github.com/vectorized/solady/blob/main/src/utils/SafeTransferLib.sol)
+ * @author Safe transfer logic was modified from Solady (https://github.com/vectorized/solady/blob/main/src/utils/SafeTransferLib.sol)
  * @dev Assumes address(0) is the native currency (such as ETH)
  */
 library ERC20AssetLibrary {
