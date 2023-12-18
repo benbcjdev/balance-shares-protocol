@@ -78,14 +78,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
         address asset,
         uint256 balanceIncreasedBy
     ) public view override returns (uint256 amountToAllocate, bool remainderIncrease) {
-        uint256 newAssetRemainder;
-        (amountToAllocate, newAssetRemainder,) = _calculateBalanceShareAllocation(
-            _getBalanceShare(msg.sender, clientShareId),
-            asset,
-            balanceIncreasedBy,
-            true
-        );
-        remainderIncrease = newAssetRemainder < MAX_BPS;
+        return checkBalanceShareAllocationWithRemainder(msg.sender, clientShareId, asset, balanceIncreasedBy);
     }
 
     /// @inheritdoc IBalanceShareAllocations
@@ -94,7 +87,7 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
         uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy
-    ) external view returns (uint256 amountToAllocate, bool remainderIncrease) {
+    ) public view returns (uint256 amountToAllocate, bool remainderIncrease) {
         uint256 newAssetRemainder;
         (amountToAllocate, newAssetRemainder,) = _calculateBalanceShareAllocation(
             _getBalanceShare(client, clientShareId),
