@@ -54,6 +54,16 @@ interface IBalanceShareAllocations {
     ) external view returns (uint256 amountToAllocate, bool remainderIncrease);
 
     /**
+     * @dev Same as {getBalanceShareAllocationWithRemainder}, but uses the msg.sender as the client parameter (for
+     * consistency with the {allocateToBalanceShareWithRemainder} function).
+     */
+    function getBalanceShareAllocationWithRemainder(
+        uint256 clientShareId,
+        address asset,
+        uint256 balanceIncreasedBy
+    ) external view returns (uint256 amountToAllocate, bool remainderIncrease);
+
+    /**
      * Transfers the specified amount to allocate of the given ERC20 asset from the msg.sender to this contract to be
      * split amongst the account shares for this balance share ID.
      * @param client The client address.
