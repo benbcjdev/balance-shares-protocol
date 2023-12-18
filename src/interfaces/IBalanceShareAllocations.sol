@@ -37,7 +37,8 @@ interface IBalanceShareAllocations {
      * Same as {getBalanceShareAllocation}, but also includes integer remainders from the previous balance allocation.
      * This is useful for calculations with small balance increase amounts relative to the max BPS (10,000). Use this
      * in conjunction with {allocateToBalanceShareWithRemainder} to track the remainders over each allocation.
-     * @param client The client address.
+     * @dev The msg.sender is used as the client parameter in this function (for consistency with the
+     * {allocateToBalanceShareWithRemainder}).
      * @param clientShareId The uint256 identifier of the client's balance share.
      * @param asset The ERC20 asset to process the balance share for (address(0) for ETH).
      * @param balanceIncreasedBy The amount that the total balance share increased by.
@@ -47,17 +48,16 @@ interface IBalanceShareAllocations {
      * Will return true if the remainder increased, even if the amountToAllocate is zero.
      */
     function getBalanceShareAllocationWithRemainder(
-        address client,
         uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy
     ) external view returns (uint256 amountToAllocate, bool remainderIncrease);
 
     /**
-     * @dev Same as {getBalanceShareAllocationWithRemainder}, but uses the msg.sender as the client parameter (for
-     * consistency with the {allocateToBalanceShareWithRemainder} function).
+     * @dev Allows viewing the {getBalanceShareAllocationWithRemainder} function result for any provided client account.
      */
-    function getBalanceShareAllocationWithRemainder(
+    function checkBalanceShareAllocationWithRemainder(
+        address client,
         uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy

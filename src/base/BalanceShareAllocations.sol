@@ -74,11 +74,27 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
 
     /// @inheritdoc IBalanceShareAllocations
     function getBalanceShareAllocationWithRemainder(
-        address client,
         uint256 clientShareId,
         address asset,
         uint256 balanceIncreasedBy
     ) public view override returns (uint256 amountToAllocate, bool remainderIncrease) {
+        uint256 newAssetRemainder;
+        (amountToAllocate, newAssetRemainder,) = _calculateBalanceShareAllocation(
+            _getBalanceShare(msg.sender, clientShareId),
+            asset,
+            balanceIncreasedBy,
+            true
+        );
+        remainderIncrease = newAssetRemainder < MAX_BPS;
+    }
+
+    /// @inheritdoc IBalanceShareAllocations
+    function checkBalanceShareAllocationWithRemainder(
+        address client,
+        uint256 clientShareId,
+        address asset,
+        uint256 balanceIncreasedBy
+    ) external view returns (uint256 amountToAllocate, bool remainderIncrease) {
         uint256 newAssetRemainder;
         (amountToAllocate, newAssetRemainder,) = _calculateBalanceShareAllocation(
             _getBalanceShare(client, clientShareId),
@@ -87,18 +103,6 @@ contract BalanceShareAllocations is StorageLayout, IBalanceShareAllocations {
             true
         );
         remainderIncrease = newAssetRemainder < MAX_BPS;
-    }
-
-    /**
-     * @dev Same as {getBalanceShareAllocationWithRemainder}, but uses the msg.sender as the client parameter (for
-     * consistency with the {allocateToBalanceShareWithRemainder} function).
-     */
-    function getBalanceShareAllocationWithRemainder(
-        uint256 clientShareId,
-        address asset,
-        uint256 balanceIncreasedBy
-    ) public view override returns (uint256, bool) {
-        return getBalanceShareAllocationWithRemainder(msg.sender, clientShareId, asset, balanceIncreasedBy);
     }
 
     function _calculateBalanceShareAllocation(
